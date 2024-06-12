@@ -1,0 +1,129 @@
+# Import necessary libraries
+# TensorFlow is a popular machine learning library developed by Google.
+# Keras is a high-level neural networks API, written in Python and capable of running on top of TensorFlow, CNTK, or Theano.
+# Numpy is a library for the Python programming language, adding support for large, multi-dimensional arrays and matrices, along with a large collection of high-level mathematical functions to operate on these arrays.
+# Matplotlib is a plotting library for the Python programming language and its numerical mathematics extension NumPy.
+import tensorflow as tf
+from tensorflow.keras import datasets, layers, models
+import numpy as np
+import matplotlib.pyplot as plt
+
+# Load and preprocess the MNIST dataset
+# MNIST is a dataset of 60,000 28x28 grayscale images of the 10 digits, along with a test set of 10,000 images.
+# The images are 28x28 NumPy arrays, with pixel values ranging from 0 to 255. The labels are an array of integers, ranging from 0 to 9.
+(train_images, train_labels), (test_images, test_labels) = datasets.mnist.load_data()
+
+# Normalize the images to [0, 1] range
+# This is done to make the training process faster and more stable.
+train_images = train_images.reshape((60000, 28, 28, 1)).astype('float32') / 255
+test_images = test_images.reshape((10000, 28, 28, 1)).astype('float32') / 255
+
+# One-hot encode the labels
+# This is done because the labels are categorical, not numerical.
+train_labels = tf.keras.utils.to_categorical(train_labels)
+test_labels = tf.keras.utils.to_categorical(test_labels)
+
+# Build a simple CNN model
+# A Convolutional Neural Network (CNN) is a class of deep, feed-forward artificial neural networks that have successfully been applied to analyzing visual imagery.
+model = models.Sequential([
+    layers.Conv2D(32, (3, 3), activation='relu', input_shape=(28, 28, 1)),
+    layers.MaxPooling2D((2, 2)),
+    layers.Conv2D(64, (3, 3), activation='relu'),
+    layers.MaxPooling2D((2, 2)),
+    layers.Conv2D(64, (3, 3), activation='relu'),
+    layers.Flatten(),
+    layers.Dense(64, activation='relu'),
+    layers.Dense(10, activation='softmax')
+])
+
+# Compile the model
+# This is where we specify the loss function, the optimizer, and the metrics we want to track during training.
+model.compile(optimizer='adam',
+              loss='categorical_crossentropy',
+              metrics=['accuracy'])
+
+# Train the model
+# This is where we train the model using the training data.
+history = model.fit(train_images, train_labels, epochs=10,
+                    validation_data=(test_images, test_labels))
+
+# Evaluate the model
+# This is where we evaluate the model using the test data.
+test_loss, test_acc = model.evaluate(test_images, test_labels, verbose=2)
+print(f'\nTest accuracy: {test_acc}')
+
+# Plot accuracy and loss graphs
+# This is where we plot the accuracy and loss graphs.
+def plot_history(history):
+    # Plot training & validation accuracy values
+    plt.figure(figsize=(12, 4))
+    plt.subplot(1, 2, 1)
+    plt.plot(history.history['accuracy'], label='Train Accuracy')
+    plt.plot(history.history['val_accuracy'], label='Test Accuracy')
+    plt.title('Model Accuracy')
+    plt.xlabel('Epoch')
+    plt.ylabel('Accuracy')
+    plt.legend(loc='lower right')
+
+    # Plot training & validation loss values
+    plt.subplot(1, 2, 2)
+    plt.plot(history.history['loss'], label='Train Loss')
+    plt.plot(history.history['val_loss'], label='Test Loss')
+    plt.title('Model Loss')
+    plt.xlabel('Epoch')
+    plt.ylabel('Loss')
+    plt.legend(loc='upper right')
+
+    plt.tight_layout()
+    plt.show()
+
+# Call the plot function
+plot_history(history)
+
+# Plot some predictions
+# This is where we plot some predictions.
+predictions = model.predict(test_images)
+
+# This function plots an image and its prediction.
+def plot_image(i, predictions_array, true_label, img):
+    predictions_array, true_label, img = predictions_array[i], true_label[i], img[i].reshape(28,28)
+    plt.grid(False)
+    plt.xticks([])
+    plt.yticks([])
+    plt.imshow(img, cmap=plt.cm.binary)
+
+    predicted_label = np.argmax(predictions_array)
+    true_label = np.argmax(true_label)
+    if predicted_label == true_label:
+        color = 'blue'
+    else:
+        color = 'red'
+
+    plt.xlabel(f"{predicted_label} ({true_label})", color=color)
+
+# This function plots the prediction probabilities for each class.
+def plot_value_array(i, predictions_array, true_label):
+    predictions_array, true_label = predictions_array[i], np.argmax(true_label[i])
+    plt.grid(False)
+    plt.xticks(range(10))
+    plt.yticks([])
+    thisplot = plt.bar(range(10), predictions_array, color="#777777")
+    plt.ylim([0, 1])
+    predicted_label = np.argmax(predictions_array)
+
+    thisplot[predicted_label].set_color('red')
+    thisplot[true_label].set_color('blue')
+
+# Plot the first 15 test images, their predicted labels, and the true labels.
+# Color correct predictions in blue, incorrect predictions in red.
+num_rows = 5
+num_cols = 3
+num_images = num_rows * num_cols
+plt.figure(figsize=(2 * 2 * num_cols, 2 * num_rows))
+for i in range(num_images):
+    plt.subplot(num_rows, 2 * num_cols, 2 * i + 1)
+    plot_image(i, predictions, test_labels, test_images)
+    plt.subplot(num_rows, 2 * num_cols, 2 * i + 2)
+    plot_value_array(i, predictions, test_labels)
+plt.tight_layout()
+plt.show()
