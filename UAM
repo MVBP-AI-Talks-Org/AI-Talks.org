@@ -1,0 +1,271 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Plot and Fit of Position, Velocity, and Acceleration Data</title>
+    <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/mathjs/9.4.4/math.min.js"></script>
+    <script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
+    <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+        }
+
+        #plots > div {
+            margin-bottom: 20px;
+        }
+
+        #positionPlot, #velocityPlot, #accelerationPlot {
+            width: 100%;
+            height: 400px;
+        }
+
+        #results {
+            margin-top: 20px;
+        }
+
+        #equations {
+            margin-top: 20px;
+        }
+    </style>
+</head>
+<body>
+    <h1>Plot and Fit of Position, Velocity, and Acceleration Data</h1>
+    <input type="file" id="fileInput" accept=".txt">
+    <div id="plots">
+        <div id="positionPlot"></div>
+        <div id="velocityPlot"></div>
+        <div id="accelerationPlot"></div>
+    </div>
+    <div id="results"></div>
+    <div id="equations">
+        <h2>Deduction of Acceleration Equation</h2>
+        <p>From Newton's second law, we have:</p>
+        <p>
+            \[
+            m_1 a = m_1 g \sin \theta - T
+            \]
+            \[
+            m_2 a = T - m_2 g
+            \]
+        </p>
+        <p>Solving these two equations for \(a\), we get:</p>
+        <p>
+            \[
+            m_1 g \sin \theta - m_2 g = (m_1 + m_2) a
+            \]
+            \[
+            a = \frac{m_2 g - m_1 g \cos \theta}{m_1 + m_2}
+            \]
+        </p>
+    </div>
+
+    <script>
+        document.getElementById('fileInput').addEventListener('change', handleFileSelect, false);
+
+        function handleFileSelect(event) {
+            const file = event.target.files[0];
+            if (!file) {
+                return;
+            }
+
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                const contents = e.target.result;
+                processFile(contents);
+            };
+            reader.readAsText(file);
+        }
+
+        function processFile(contents) {
+            const lines = contents.split('\n');
+            const timePositions = [];
+            const positions = [];
+            const timeVelocities = [];
+            const velocities = [];
+            const timeAccelerations = [];
+            const accelerations = [];
+            
+            lines.forEach(line => {
+                const [timePos, pos, timeVel, vel, timeAcc, acc] = line.split(/\s+/).map(Number);
+                if (!isNaN(timePos) && !isNaN(pos) && !isNaN(timeVel) && !isNaN(vel) && !isNaN(timeAcc) && !isNaN(acc)) {
+                    timePositions.push(timePos);
+                    positions.push(pos);
+                    timeVelocities.push(timeVel);
+                    velocities.push(vel);
+                    timeAccelerations.push(timeAcc);
+                    accelerations.push(acc);
+                }
+            });
+
+            plotData(timePositions, positions, timeVelocities, velocities, timeAccelerations, accelerations);
+        }
+
+        function plotData(timePositions, positions, timeVelocities, velocities, timeAccelerations, accelerations) {
+            const { X0, V0, A_pos, posFit } = fitPositionData(timePositions, positions);
+            const { A_vel, velFit } = fitVelocityData(timeVelocities, velocities);
+            const { A_acc, accFit } = fitAccelerationData(timeAccelerations, accelerations);
+
+            const positionTrace = {
+                x: timePositions,
+                y: positions,
+                mode: 'markers',
+                name: 'Position'
+            };
+
+            const positionFitTrace = {
+                x: timePositions,
+                y: posFit,
+                mode: 'lines',
+                name: 'Fit Position',
+                line: { color: 'red' }
+            };
+
+            const velocityTrace = {
+                x: timeVelocities,
+                y: velocities,
+                mode: 'markers',
+                name: 'Velocity'
+            };
+
+            const velocityFitTrace = {
+                x: timeVelocities,
+                y: velFit,
+                mode: 'lines',
+                name: 'Fit Velocity',
+                line: { color: 'red' }
+            };
+
+            const accelerationTrace = {
+                x: timeAccelerations,
+                y: accelerations,
+                mode: 'markers',
+                name: 'Acceleration'
+            };
+
+            const accelerationFitTrace = {
+                x: timeAccelerations,
+                y: accFit,
+                mode: 'lines',
+                name: 'Fit Acceleration',
+                line: { color: 'red' }
+            };
+
+            const positionLayout = {
+                title: 'Position vs Time',
+                xaxis: {
+                    title: 'Time (s)',
+                    showgrid: true,
+                    gridcolor: 'lightgray'
+                },
+                yaxis: {
+                    title: 'Position (m)',
+                    showgrid: true,
+                    gridcolor: 'lightgray'
+                }
+            };
+
+            const velocityLayout = {
+                title: 'Velocity vs Time',
+                xaxis: {
+                    title: 'Time (s)',
+                    showgrid: true,
+                    gridcolor: 'lightgray'
+                },
+                yaxis: {
+                    title: 'Velocity (m/s)',
+                    showgrid: true,
+                    gridcolor: 'lightgray'
+                }
+            };
+
+            const accelerationLayout = {
+                title: 'Acceleration vs Time',
+                xaxis: {
+                    title: 'Time (s)',
+                    showgrid: true,
+                    gridcolor: 'lightgray'
+                },
+                yaxis: {
+                    title: 'Acceleration (m/s²)',
+                    showgrid: true,
+                    gridcolor: 'lightgray'
+                }
+            };
+
+            Plotly.newPlot('positionPlot', [positionTrace, positionFitTrace], positionLayout);
+            Plotly.newPlot('velocityPlot', [velocityTrace, velocityFitTrace], velocityLayout);
+            Plotly.newPlot('accelerationPlot', [accelerationTrace, accelerationFitTrace], accelerationLayout);
+
+            displayResults(X0, V0, A_pos, A_vel, A_acc);
+        }
+
+        function fitPositionData(t, x) {
+            const n = t.length;
+            const matrix = [];
+            const vector = [];
+            for (let i = 0; i < n; i++) {
+                matrix.push([1, t[i], t[i] ** 2]);
+                vector.push([x[i]]);
+            }
+
+            const matrixT = math.transpose(matrix);
+            const matrixInv = math.inv(math.multiply(matrixT, matrix));
+            const result = math.multiply(matrixInv, math.multiply(matrixT, vector));
+
+            const X0 = result[0][0];
+            const V0 = result[1][0];
+            const A = result[2][0];
+
+            const posFit = t.map(time => X0 + V0 * time + A * time ** 2);
+
+            return { X0, V0, A_pos: A*2, posFit };
+        }
+
+        function fitVelocityData(t, v) {
+            const n = t.length;
+            const matrix = [];
+            const vector = [];
+            for (let i = 0; i < n; i++) {
+                matrix.push([t[i]]);
+                vector.push([v[i]]);
+            }
+
+            const matrixT = math.transpose(matrix);
+            const matrixInv = math.inv(math.multiply(matrixT, matrix));
+            const result = math.multiply(matrixInv, math.multiply(matrixT, vector));
+
+            const A = result[0][0];
+
+            const velFit = t.map(time => A * time);
+
+            return { A_vel: A, velFit };
+        }
+
+        function fitAccelerationData(t, a) {
+            const A = math.mean(a);
+
+            const accFit = t.map(() => A);
+
+            return { A_acc: A, accFit };
+        }
+
+        function displayResults(X0, V0, A_pos, A_vel, A_acc) {
+            const meanA = (A_pos + A_vel + A_acc) / 3;
+            const stdA = math.std([A_pos, A_vel, A_acc]);
+
+            const resultsDiv = document.getElementById('results');
+            resultsDiv.innerHTML = `
+                <h2>Results</h2>
+                <p>Position Fit: a_x = ${A_pos.toFixed(4)} m/s²</p>
+                <p>Velocity Fit: a_v = ${A_vel.toFixed(4)} m/s²</p>
+                <p>Acceleration Fit: a_a = ${A_acc.toFixed(4)} m/s²</p>
+                <p>Mean Acceleration: a = (${meanA.toFixed(2)} ± ${stdA.toFixed(2)}) m/s²</p>
+            `;
+        }
+    </script>
+</body>
+</html>
